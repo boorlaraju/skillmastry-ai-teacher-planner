@@ -1,0 +1,2 @@
+import { Paper, Typography, Box } from '@mui/material';
+export default function Section({ title, subtitle, children, action }) { return <Paper sx={{ p: { xs: 2, md: 3 }, mb: 2.5 }}><Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={2} mb={2}><Box><Typography variant="h6">{title}</Typography>{subtitle && <Typography color="text.secondary" variant="body2" sx={{ mt: .3 }}>{subtitle}</Typography>}</Box>{action}</Box>{children}</Paper>; }

@@ -1,0 +1,7 @@
+import { Card, CardContent, Box, Typography, Chip, IconButton, Tooltip } from '@mui/material';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import { formatDate } from '../utils/format';
+export default function LessonCard({ lesson, onOpen, onMenu }) {
+ return <Card onClick={onOpen} sx={{ cursor: 'pointer', transition: '.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 28px rgba(28,45,90,.10)' } }}><CardContent><Box display="flex" justifyContent="space-between" alignItems="flex-start"><Box sx={{ bgcolor: '#eef2ff', color: 'primary.main', p: 1.2, borderRadius: 2 }}><MenuBookOutlinedIcon /></Box><Tooltip title="More actions"><IconButton size="small" onClick={e => { e.stopPropagation(); onMenu?.(e.currentTarget); }}><MoreHorizIcon /></IconButton></Tooltip></Box><Typography variant="h6" sx={{ mt: 2 }} noWrap>{lesson.topic || 'Untitled lesson'}</Typography><Typography color="text.secondary" variant="body2" sx={{ mt: .5 }}>{lesson.subject || 'Subject'} · Class {lesson.classNumber ?? '—'}</Typography><Box display="flex" gap={1} flexWrap="wrap" sx={{ mt: 2 }}><Chip size="small" label={`${lesson.duration || 45} min`} variant="outlined"/><Chip size="small" label={lesson.language || 'English'} variant="outlined"/></Box><Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>Updated {formatDate(lesson.updatedAt || lesson.createdAt)}</Typography></CardContent></Card>;
+}

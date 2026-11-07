@@ -1,0 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f7fb; }
+.auth-bg { background: radial-gradient(circle at 10% 15%, rgba(80,112,225,.13), transparent 32%), radial-gradient(circle at 90% 85%, rgba(15,159,131,.10), transparent 30%), #f5f7fb; }
+.MuiAccordion-root { box-shadow: none !important; }
