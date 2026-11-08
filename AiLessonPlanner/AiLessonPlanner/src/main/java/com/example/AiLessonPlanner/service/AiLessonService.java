@@ -24,7 +24,7 @@ public class AiLessonService {
     @Value("${app.ai.api-key:}")
     private String apiKey;
 
-    @Value("${app.ai.model:grok-4.7}")
+    @Value("${app.ai.model:openai/gpt-oss-120b}")
     private String model;
 
     private final RestClient restClient = RestClient.create();
@@ -44,15 +44,25 @@ public class AiLessonService {
 
         try {
 
-            // Build Grok request
+            // Build Groq request
             Map<String, Object> requestBody = Map.of(
                     "model", model,
-                    "input", prompt
+                    "messages", List.of(
+                            Map.of(
+                                    "role", "system",
+                                    "content", "You are an expert teacher. Return valid JSON only. Do not use Markdown fences."
+                            ),
+                            Map.of(
+                                    "role", "user",
+                                    "content", prompt
+                            )
+                    ),
+                    "temperature", 0.2
             );
 
-         // Call Grok API
+      // Call Groq API
             Map<String, Object> apiResponse = restClient.post()
-                    .uri("https://api.x.ai/v1/responses")
+                    .uri("https://api.groq.com/openai/v1/chat/completions")
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .body(requestBody)
@@ -60,15 +70,15 @@ public class AiLessonService {
                     .body(new ParameterizedTypeReference<>() {});
 
             if (apiResponse == null) {
-                throw new IllegalStateException("Grok returned an empty response");
+                throw new IllegalStateException("Groq returned an empty response");
             }
 
-         // Extract generated text
+      // Extract generated text
             String generatedText = extractGeneratedText(apiResponse);
 
-            log.info("Grok generated response length: {}", generatedText.length());
+            log.info("Groq generated response length: {}", generatedText.length());
 
-         // Convert generated JSON to Java Map
+// Convert generated JSON to Java Map
             Map<String, Object> generated =
                     mapper.readValue(
                             generatedText,
@@ -292,41 +302,32 @@ public class AiLessonService {
 
     private String extractGeneratedText(Map<String, Object> response) {
 
-        List<?> output = (List<?>) response.get("output");
+        List<?> choices = (List<?>) response.get("choices");
 
-        if (output == null || output.isEmpty()) {
+        if (choices == null || choices.isEmpty()) {
             throw new IllegalStateException(
-                    "Grok did not return generated content"
+                    "Groq did not return generated content"
             );
         }
 
-        for (Object item : output) {
-            if (!(item instanceof Map<?, ?> message)) {
-                continue;
-            }
+        Map<?, ?> choice = (Map<?, ?>) choices.get(0);
 
-            List<?> content = (List<?>) message.get("content");
+        Map<?, ?> message = (Map<?, ?>) choice.get("message");
 
-            if (content == null) {
-                continue;
-            }
+        if (message == null) {
+            throw new IllegalStateException(
+                    "Groq response message is missing"
+            );
+        }
 
-            for (Object part : content) {
-                if (part instanceof Map<?, ?> textPart
-                        && "output_text".equals(textPart.get("type"))) {
+        Object content = message.get("content");
 
-                    Object text = textPart.get("text");
-
-                    if (text instanceof String generatedText
-                            && !generatedText.isBlank()) {
-                        return generatedText;
-                    }
-                }
-            }
+        if (content instanceof String text && !text.isBlank()) {
+            return text;
         }
 
         throw new IllegalStateException(
-                "Grok did not return generated text"
+                "Groq did not return generated text"
         );
     }
 
