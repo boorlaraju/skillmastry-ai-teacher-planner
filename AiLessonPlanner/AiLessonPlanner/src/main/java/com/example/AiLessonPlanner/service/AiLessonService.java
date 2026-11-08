@@ -24,7 +24,7 @@ public class AiLessonService {
     @Value("${app.ai.api-key:}")
     private String apiKey;
 
-    @Value("${app.ai.model:gemini-3.8-flash}")
+    @Value("${app.ai.model:grok-4.7}")
     private String model;
 
     private final RestClient restClient = RestClient.create();
@@ -43,65 +43,39 @@ public class AiLessonService {
         }
 
         try {
-            // Build Gemini request
-            Map<String, Object> part = Map.of("text", prompt);
 
-            Map<String, Object> content = Map.of(
-                    "parts", List.of(part)
-            );
-
-//            Map<String, Object> generationConfig = Map.of(
-//                    "responseMimeType", "application/json",
-//                    "temperature", 0.4
-//            );
-
-            Map<String, Object> generationConfig = Map.of(
-                    "responseMimeType", "application/json",
-                    "temperature", 0.2,
-                    "maxOutputTokens", 12000
-            );
-
+            // Build Grok request
             Map<String, Object> requestBody = Map.of(
-                    "contents", List.of(content),
-                    "generationConfig", generationConfig
+                    "model", model,
+                    "input", prompt
             );
 
-            // Call Gemini API
+         // Call Grok API
             Map<String, Object> apiResponse = restClient.post()
-                    .uri(
-                            "https://generativelanguage.googleapis.com/v1beta/models/"
-                                    + model + ":generateContent"
-                    )
-                    .header("x-goog-api-key", apiKey)
+                    .uri("https://api.x.ai/v1/responses")
+                    .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .body(requestBody)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 
             if (apiResponse == null) {
-                throw new IllegalStateException(
-                        "Gemini returned an empty response"
-                );
+                throw new IllegalStateException("Grok returned an empty response");
             }
 
-            // Extract generated text
+         // Extract generated text
             String generatedText = extractGeneratedText(apiResponse);
 
-            log.info("Gemini generated response length: {}", generatedText.length());
-            log.debug("Gemini generated response: {}", generatedText);
+            log.info("Grok generated response length: {}", generatedText.length());
 
-            Map<String, Object> candidate =
-                    (Map<String, Object>) ((List<?>) apiResponse.get("candidates")).get(0);
-
-            log.info("Gemini finish reason: {}", candidate.get("finishReason"));
-
-            // Convert generated JSON to Java Map
+         // Convert generated JSON to Java Map
             Map<String, Object> generated =
                     mapper.readValue(
                             generatedText,
                             new TypeReference<Map<String, Object>>() {}
                     );
 
+            log.info("Gemini generated response length: {}", generatedText.length());
             // Extract detailed content
             Map<String, Object> detailedContent =
                     asMap(generated.get("detailedContent"));
@@ -316,52 +290,43 @@ public class AiLessonService {
         );
     }
 
-    private String extractGeneratedText(
-            Map<String, Object> response
-    ) {
+    private String extractGeneratedText(Map<String, Object> response) {
 
-        List<?> candidates =
-                (List<?>) response.get("candidates");
+        List<?> output = (List<?>) response.get("output");
 
-        if (candidates == null || candidates.isEmpty()) {
+        if (output == null || output.isEmpty()) {
             throw new IllegalStateException(
-                    "Gemini did not return any generated content"
+                    "Grok did not return generated content"
             );
         }
 
-        Map<?, ?> candidate = (Map<?, ?>) candidates.get(0);
+        for (Object item : output) {
+            if (!(item instanceof Map<?, ?> message)) {
+                continue;
+            }
 
-        Map<?, ?> responseContent =
-                (Map<?, ?>) candidate.get("content");
+            List<?> content = (List<?>) message.get("content");
 
-        if (responseContent == null) {
-            throw new IllegalStateException(
-                    "Gemini response content is missing"
-            );
-        }
+            if (content == null) {
+                continue;
+            }
 
-        List<?> parts = (List<?>) responseContent.get("parts");
+            for (Object part : content) {
+                if (part instanceof Map<?, ?> textPart
+                        && "output_text".equals(textPart.get("type"))) {
 
-        if (parts == null || parts.isEmpty()) {
-            throw new IllegalStateException(
-                    "Gemini response parts are empty"
-            );
-        }
+                    Object text = textPart.get("text");
 
-        for (Object item : parts) {
-
-            Map<?, ?> part = (Map<?, ?>) item;
-
-            Object text = part.get("text");
-
-            if (text instanceof String generatedText
-                    && !generatedText.isBlank()) {
-                return generatedText;
+                    if (text instanceof String generatedText
+                            && !generatedText.isBlank()) {
+                        return generatedText;
+                    }
+                }
             }
         }
 
         throw new IllegalStateException(
-                "Gemini did not return generated text"
+                "Grok did not return generated text"
         );
     }
 
