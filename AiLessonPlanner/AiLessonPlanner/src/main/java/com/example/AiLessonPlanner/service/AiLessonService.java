@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import tools.jackson.core.type.TypeReference;
@@ -124,7 +125,19 @@ public class AiLessonService {
                     detailedContent
             );
 
-        } catch (RestClientException e) {
+        }
+        catch (RestClientResponseException e) {
+
+            log.error("Gemini HTTP status: {}", e.getStatusCode());
+            log.error("Gemini error response: {}", e.getResponseBodyAsString());
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Gemini API error: " + e.getStatusCode()
+            );
+
+        }
+        catch (RestClientException e) {
 
             log.error("Gemini API request failed", e);
 
